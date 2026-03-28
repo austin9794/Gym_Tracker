@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}History — GymTrack{% endblock %}
+{% block content %}
+
+<style>
+    .filter-bar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .filter-group { display: flex; flex-direction: column; gap: 0.4rem; min-width: 160px; }
+    .filter-group label { font-size: 0.65rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+    .filter-group input, .filter-group select {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        padding: 0.6rem 0.85rem;
+        font-size: 0.9rem;
+        font-family: 'DM Sans', sans-serif;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+    .filter-group input:focus, .filter-group select:focus { border-color: var(--accent); }
+
+    .filter-actions { display: flex; gap: 0.5rem; margin-top: auto; }
+
+    .result-count {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 1rem;
+        letter-spacing: 0.5px;
+    }
+    .result-count span { color: var(--accent); font-weight: 600; }
+
+    .history-table { width: 100%; border-collapse: collapse; }
+    .history-table th {
+        text-align: left;
+        font-size: 0.65rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 0 0.75rem 0.75rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .history-table td {
+        padding: 0.8rem 0.75rem;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+    }
+    .history-table tr:last-child td { border-bottom: none; }
+    .history-table tr:hover td { background: var(--surface2); }
+
+    .vol { color: var(--muted); font-size: 0.8rem; }
+
+    .empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .empty .big { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: #333; }
+
+    .ex-tag {
+        display: inline-block;
+        background: rgba(232,255,71,0.08);
+        color: var(--accent);
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+</style>
+
+<div class="page-title">WORKOUT <span>HISTORY</span></div>
+
+<!-- Filter bar -->
+<form method="GET" action="{{ url_for('history') }}">
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>From</label>
+            <input type="date" name="from" value="{{ date_from }}" max="{{ today }}">
+        </div>
+        <div class="filter-group">
+            <label>To</label>
+            <input type="date" name="to" value="{{ date_to }}" max="{{ today }}">
+        </div>
+        <div class="filter-group">
+            <label>Exercise</label>
+            <select name="exercise">
+                <option value="">All exercises</option>
+                {% for ex in exercises %}
+                <option value="{{ ex }}" {% if ex == selected_exercise %}selected{% endif %}>{{ ex }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button class="btn" type="submit">Filter</button>
+            <a href="{{ url_for('history') }}" class="btn btn-ghost">Clear</a>
+        </div>
+    </div>
+</form>
+
+<div class="result-count"><span>{{ workouts|length }}</span> entries found</div>
+
+<div class="card" style="padding: 0; overflow: hidden;">
+    {% if workouts %}
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Exercise</th>
+                <th>Sets</th>
+                <th>Reps</th>
+                <th>Weight</th>
+                <th>Volume</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for w in workouts %}
+            <tr>
+                <td><span class="badge">{{ w.date }}</span></td>
+                <td><span class="ex-tag">{{ w.exercise }}</span></td>
+                <td class="accent">{{ w.sets or '—' }}</td>
+                <td class="accent">{{ w.reps or '—' }}</td>
+                <td>{% if w.weight_kg %}{{ w.weight_kg }}kg{% else %}<span class="badge">BW</span>{% endif %}</td>
+                <td class="vol">
+                    {% if w.weight_kg and w.sets and w.reps %}
+                        {{ (w.sets * w.reps * w.weight_kg)|round(1) }}kg
+                    {% else %}—{% endif %}
+                </td>
+                <td style="color: var(--muted); font-size: 0.85rem;">{{ w.notes or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+        <div class="big">NO RESULTS</div>
+        <p>Try adjusting your filters</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

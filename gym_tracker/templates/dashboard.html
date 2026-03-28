@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — GymTrack{% endblock %}
+{% block content %}
+
+<div class="page-title">YOUR <span>PROGRESS</span></div>
+
+<div style="display:flex; gap: 0.75rem; margin-bottom: 1.75rem;">
+    <a href="{{ url_for('weekly') }}" class="btn btn-ghost" style="font-size:0.85rem; padding: 0.6rem 1.25rem;">📅 Weekly Summary</a>
+    <a href="{{ url_for('export_excel') }}" class="btn btn-ghost" style="font-size:0.85rem; padding: 0.6rem 1.25rem;">⬇ Export Excel</a>
+</div>
+
+<!-- Top stats row -->
+<div class="grid-3">
+    <div class="card">
+        <div class="card-title">Sessions This Week</div>
+        <div class="stat-big">{{ workouts_this_week }}</div>
+        <div class="stat-label">days trained</div>
+    </div>
+    <div class="card">
+        <div class="card-title">Current Weight</div>
+        <div class="stat-big">{{ "%.1f"|format(latest_stats.weight_kg) if latest_stats else "—" }}</div>
+        <div class="stat-label">kg body weight</div>
+    </div>
+    <div class="card">
+        <div class="card-title">Body Fat</div>
+        <div class="stat-big">{{ "%.1f"|format(latest_stats.body_fat_pct) if latest_stats and latest_stats.body_fat_pct else "—" }}</div>
+        <div class="stat-label">% estimated</div>
+    </div>
+</div>
+
+<!-- Charts row -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Body Weight Trend</div>
+        </div>
+        <canvas id="weightChart" height="180"></canvas>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Strength Progress</div>
+            <select class="chart-select" id="exerciseSelect" onchange="loadStrengthChart()"></select>
+        </div>
+        <canvas id="strengthChart" height="180"></canvas>
+    </div>
+</div>
+
+<!-- PRs and recent -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-title">Personal Records</div>
+        <div class="pr-grid">
+            {% for pr in prs %}
+            <div class="pr-item">
+                <div class="ex-name">{{ pr.exercise }}</div>
+                <div class="ex-weight">{{ pr.max_weight|int if pr.max_weight == pr.max_weight|int else "%.1f"|format(pr.max_weight) }}</div>
+                <div class="ex-unit">kg max</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Recent Workouts</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Exercise</th>
+                    <th>Sets × Reps</th>
+                    <th>Weight</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in recent_workouts %}
+                <tr>
+                    <td>{{ w.exercise }}</td>
+                    <td class="accent">{{ w.sets }}×{{ w.reps }}</td>
+                    <td>{% if w.weight_kg %}{{ w.weight_kg }}kg{% else %}<span class="badge">BW</span>{% endif %}</td>
+                    <td><span class="badge">{{ w.date }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+const ACCENT = '#e8ff47';
+const ACCENT2 = '#ff6b35';
+const GRID = '#222222';
+const MUTED = '#444444';
+
+const chartDefaults = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+        x: { grid: { color: GRID }, ticks: { color: '#666', font: { size: 11 } } },
+        y: { grid: { color: GRID }, ticks: { color: '#666', font: { size: 11 } } }
+    }
+};
+
+let strengthChart = null;
+
+async function loadCharts() {
+    const res = await fetch('/api/chart-data');
+    const data = await res.json();
+
+    // Populate exercise select
+    const sel = document.getElementById('exerciseSelect');
+    data.exercises.forEach(ex => {
+        const opt = document.createElement('option');
+        opt.value = ex; opt.textContent = ex;
+        sel.appendChild(opt);
+    });
+
+    // Weight chart
+    const wCtx = document.getElementById('weightChart').getContext('2d');
+    new Chart(wCtx, {
+        type: 'line',
+        data: {
+            labels: data.weight.labels,
+            datasets: [{
+                data: data.weight.values,
+                borderColor: ACCENT,
+                backgroundColor: 'rgba(232,255,71,0.06)',
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: ACCENT,
+                pointRadius: 4,
+                borderWidth: 2
+            }]
+        },
+        options: chartDefaults
+    });
+
+    // Strength chart (first exercise)
+    drawStrengthChart(data.strength.labels, data.strength.values);
+}
+
+function drawStrengthChart(labels, values) {
+    const ctx = document.getElementById('strengthChart').getContext('2d');
+    if (strengthChart) strengthChart.destroy();
+    strengthChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: 'rgba(255,107,53,0.5)',
+                borderColor: ACCENT2,
+                borderWidth: 1.5,
+                borderRadius: 4
+            }]
+        },
+        options: chartDefaults
+    });
+}
+
+async function loadStrengthChart() {
+    const ex = document.getElementById('exerciseSelect').value;
+    const res = await fetch(`/api/chart-data?exercise=${encodeURIComponent(ex)}`);
+    const data = await res.json();
+    drawStrengthChart(data.strength.labels, data.strength.values);
+}
+
+loadCharts();
+</script>
+{% endblock %}

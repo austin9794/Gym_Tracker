@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}Goals — GymTrack{% endblock %}
+{% block content %}
+
+<style>
+    .goals-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 2rem;
+        align-items: start;
+    }
+
+    .goal-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.2s;
+    }
+
+    .goal-card:hover { border-color: #333; }
+
+    .goal-card.done {
+        border-color: rgba(74, 222, 128, 0.3);
+        background: linear-gradient(135deg, var(--surface) 0%, rgba(74,222,128,0.04) 100%);
+    }
+
+    .goal-card.done::before {
+        content: '✓ ACHIEVED';
+        position: absolute;
+        top: 1.25rem;
+        right: 1.25rem;
+        font-size: 0.65rem;
+        letter-spacing: 2px;
+        font-weight: 700;
+        color: var(--success);
+        background: rgba(74,222,128,0.1);
+        padding: 0.25rem 0.6rem;
+        border-radius: 4px;
+    }
+
+    .goal-type-tag {
+        display: inline-block;
+        font-size: 0.6rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        font-weight: 700;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin-bottom: 0.75rem;
+    }
+
+    .goal-type-tag.strength { background: rgba(255,107,53,0.15); color: var(--accent2); }
+    .goal-type-tag.bodyweight { background: rgba(232,255,71,0.1); color: var(--accent); }
+
+    .goal-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.6rem;
+        letter-spacing: 1px;
+        margin-bottom: 1.25rem;
+        line-height: 1.1;
+    }
+
+    .goal-title span { color: var(--accent); }
+
+    .progress-track {
+        background: var(--surface2);
+        border-radius: 999px;
+        height: 10px;
+        width: 100%;
+        margin-bottom: 0.6rem;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--accent2), var(--accent));
+        width: 0%;
+        transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .progress-fill.done-fill {
+        background: linear-gradient(90deg, #22c55e, #4ade80);
+    }
+
+    .goal-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.75rem;
+    }
+
+    .goal-numbers {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .goal-num {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .goal-num .val {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.4rem;
+        letter-spacing: 1px;
+        line-height: 1;
+    }
+
+    .goal-num .val.current { color: var(--text); }
+    .goal-num .val.target { color: var(--accent); }
+    .goal-num .lbl {
+        font-size: 0.65rem;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 0.15rem;
+    }
+
+    .pct-badge {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2rem;
+        letter-spacing: 1px;
+        color: var(--accent);
+    }
+
+    .pct-badge.done-pct { color: var(--success); }
+
+    .deadline-chip {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-top: 0.75rem;
+    }
+
+    .deadline-chip .days {
+        color: var(--text);
+        font-weight: 600;
+    }
+
+    .deadline-chip .overdue { color: #f87171; }
+
+    .delete-btn {
+        position: absolute;
+        bottom: 1.25rem;
+        right: 1.25rem;
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        transition: all 0.15s;
+    }
+
+    .delete-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--muted);
+    }
+
+    .empty-state .big { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: #333; margin-bottom: 0.5rem; }
+
+    /* Form panel */
+    .form-panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        position: sticky;
+        top: 80px;
+    }
+
+    .form-panel .panel-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.4rem;
+        letter-spacing: 2px;
+        margin-bottom: 1.25rem;
+        color: var(--accent);
+    }
+
+    .type-toggle {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .type-btn {
+        padding: 0.6rem;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        color: var(--muted);
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.15s;
+        text-align: center;
+    }
+
+    .type-btn.active {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: rgba(232,255,71,0.08);
+    }
+
+    #exercise-field { transition: opacity 0.2s; }
+    #exercise-field.hidden { opacity: 0; pointer-events: none; height: 0; margin: 0; overflow: hidden; }
+</style>
+
+<div class="page-title">MY <span>GOALS</span></div>
+
+<div class="goals-layout">
+
+    <!-- Goals list -->
+    <div>
+        {% if goals %}
+            {% for g in goals %}
+            <div class="goal-card {% if g.done %}done{% endif %}">
+                <div class="goal-type-tag {{ g.type }}">
+                    {% if g.type == 'strength' %}💪 Strength{% else %}⚖️ Body Weight{% endif %}
+                </div>
+
+                <div class="goal-title">
+                    {% if g.type == 'strength' %}
+                        {{ g.exercise }} → <span>{{ g.target_kg|int }}kg</span>
+                    {% else %}
+                        Body Weight → <span>{{ g.target_kg }}kg</span>
+                    {% endif %}
+                </div>
+
+                <div class="progress-track">
+                    <div class="progress-fill {% if g.done %}done-fill{% endif %}"
+                         data-pct="{{ g.progress_pct }}"></div>
+                </div>
+
+                <div class="goal-meta">
+                    <div class="goal-numbers">
+                        <div class="goal-num">
+                            <span class="val current">{{ "%.1f"|format(g.current_kg) }}kg</span>
+                            <span class="lbl">Current</span>
+                        </div>
+                        <div class="goal-num">
+                            <span class="val">{{ "%.1f"|format(g.start_kg or 0) }}kg</span>
+                            <span class="lbl">Started</span>
+                        </div>
+                        <div class="goal-num">
+                            <span class="val target">{{ g.target_kg }}kg</span>
+                            <span class="lbl">Target</span>
+                        </div>
+                    </div>
+                    <div class="pct-badge {% if g.done %}done-pct{% endif %}">{{ g.progress_pct }}%</div>
+                </div>
+
+                {% if g.deadline %}
+                <div class="deadline-chip">
+                    {% if g.days_left is not none %}
+                        {% if g.done %}
+                            🎯 Goal complete
+                        {% elif g.days_left < 0 %}
+                            <span class="overdue">⚠ {{ g.days_left|abs }} days overdue</span>
+                        {% elif g.days_left == 0 %}
+                            <span class="overdue">⚠ Due today!</span>
+                        {% else %}
+                            <span class="days">{{ g.days_left }}</span> days remaining · deadline {{ g.deadline }}
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if not g.done %}
+                <form method="POST" action="{{ url_for('delete_goal', goal_id=g.id) }}" style="display:inline">
+                    <button class="delete-btn" type="submit" onclick="return confirm('Remove this goal?')">Remove</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div class="big">NO GOALS YET</div>
+                <p>Set your first goal using the panel →</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Add goal form -->
+    <div class="form-panel">
+        <div class="panel-title">+ NEW GOAL</div>
+
+        <form method="POST" action="{{ url_for('goals') }}">
+            <input type="hidden" name="type" id="goal-type-input" value="strength">
+
+            <div class="type-toggle">
+                <div class="type-btn active" onclick="setType('strength', this)">💪 Strength</div>
+                <div class="type-btn" onclick="setType('bodyweight', this)">⚖️ Body Weight</div>
+            </div>
+
+            <div class="form-group" id="exercise-field">
+                <label>Exercise</label>
+                {% if exercises %}
+                <select name="exercise">
+                    {% for ex in exercises %}
+                    <option value="{{ ex }}">{{ ex }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <input type="text" name="exercise" placeholder="e.g. Squat">
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label id="target-label">Target Weight (kg)</label>
+                <input type="number" name="target_kg" step="0.5" min="0" placeholder="e.g. 140" required>
+            </div>
+
+            <div class="form-group">
+                <label>Deadline (optional)</label>
+                <input type="date" name="deadline" min="{{ today }}">
+            </div>
+
+            <button class="btn" type="submit" style="width:100%">Add Goal</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Animate progress bars on load
+window.addEventListener('load', () => {
+    document.querySelectorAll('.progress-fill').forEach(bar => {
+        const pct = bar.dataset.pct;
+        setTimeout(() => bar.style.width = pct + '%', 100);
+    });
+});
+
+function setType(type, el) {
+    document.getElementById('goal-type-input').value = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+
+    const exField = document.getElementById('exercise-field');
+    const label = document.getElementById('target-label');
+
+    if (type === 'bodyweight') {
+        exField.classList.add('hidden');
+        label.textContent = 'Target Body Weight (kg)';
+    } else {
+        exField.classList.remove('hidden');
+        label.textContent = 'Target Weight (kg)';
+    }
+}
+</script>
+
+{% endblock %}

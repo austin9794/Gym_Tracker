@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Weekly Summary — GymTrack{% endblock %}
+{% block content %}
+
+<style>
+    .week-header {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .week-label {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+        letter-spacing: 0.5px;
+    }
+
+    .week-label span { color: var(--text); font-weight: 600; }
+
+    .comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .cmp-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
+    .cmp-card .label {
+        font-size: 0.65rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.75rem;
+    }
+
+    .cmp-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .cmp-val {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 3rem;
+        letter-spacing: 2px;
+        line-height: 1;
+        color: var(--accent);
+    }
+
+    .cmp-prev {
+        font-size: 1rem;
+        color: var(--muted);
+        padding-bottom: 0.4rem;
+        font-family: 'Bebas Neue', sans-serif;
+        letter-spacing: 1px;
+    }
+
+    .delta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+
+    .delta.up   { background: rgba(74,222,128,0.12); color: #4ade80; }
+    .delta.down { background: rgba(248,113,113,0.12); color: #f87171; }
+    .delta.flat { background: var(--surface2); color: var(--muted); }
+
+    .section-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.4rem;
+        letter-spacing: 2px;
+        color: var(--accent);
+        margin-bottom: 1rem;
+    }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+
+    .ex-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .ex-row:last-child { border-bottom: none; }
+    .ex-name { font-size: 0.9rem; }
+    .ex-meta { display: flex; gap: 0.75rem; font-size: 0.8rem; color: var(--muted); }
+    .ex-meta .highlight { color: var(--accent); font-weight: 600; }
+
+    .pr-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.65rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .pr-row:last-child { border-bottom: none; }
+    .pr-star { color: var(--accent); font-size: 1rem; }
+    .pr-info { flex: 1; }
+    .pr-info .ex { font-size: 0.9rem; }
+    .pr-info .wt { font-size: 0.8rem; color: var(--muted); }
+    .pr-badge { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; color: var(--accent); letter-spacing: 1px; }
+
+    .no-data { color: var(--muted); font-size: 0.9rem; padding: 1rem 0; }
+
+    .body-weight-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+    }
+    .bw-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    .bw-val { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 1px; color: var(--text); }
+</style>
+
+<div class="page-title">WEEKLY <span>SUMMARY</span></div>
+
+<div class="week-header">
+    <div class="week-label">This week: <span>{{ cur_from }} → {{ cur_to }}</span></div>
+    <div class="week-label">vs last week: <span>{{ prev_from }} → {{ prev_to }}</span></div>
+</div>
+
+<!-- Key metrics comparison -->
+<div class="comparison-grid">
+
+    {% set metrics = [
+        ("Sessions", cur.sessions, prev.sessions, comparison.sessions, "days"),
+        ("Total Volume", cur.total_volume, prev.total_volume, comparison.volume, "kg"),
+        ("Total Sets",   cur.total_sets,   prev.total_sets,   comparison.sets,   "sets"),
+    ] %}
+
+    {% for label, cur_val, prev_val, delta_pct, unit in metrics %}
+    <div class="cmp-card">
+        <div class="label">{{ label }}</div>
+        <div class="cmp-row">
+            <div class="cmp-val">{{ "{:,}".format(cur_val) }}</div>
+            <div class="cmp-prev">vs {{ "{:,}".format(prev_val) }}</div>
+        </div>
+        {% if delta_pct is not none %}
+            {% if delta_pct > 0 %}
+                <div class="delta up">▲ {{ delta_pct }}% vs last week</div>
+            {% elif delta_pct < 0 %}
+                <div class="delta down">▼ {{ (delta_pct * -1) }}% vs last week</div>
+            {% else %}
+                <div class="delta flat">= same as last week</div>
+            {% endif %}
+        {% else %}
+            <div class="delta flat">no previous data</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+</div>
+
+<div class="two-col">
+
+    <!-- Exercises this week -->
+    <div class="card">
+        <div class="section-title">Exercises This Week</div>
+        {% if cur.exercises %}
+            {% for ex in cur.exercises %}
+            <div class="ex-row">
+                <span class="ex-name">{{ ex.exercise }}</span>
+                <div class="ex-meta">
+                    <span>{{ ex.cnt }} sets</span>
+                    {% if ex.top_weight %}
+                    <span class="highlight">↑ {{ ex.top_weight }}kg</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-data">No workouts logged this week yet.</div>
+        {% endif %}
+    </div>
+
+    <!-- PRs hit this week -->
+    <div class="card">
+        <div class="section-title">PRs This Week 🏆</div>
+        {% if cur.prs %}
+            {% for pr in cur.prs %}
+            <div class="pr-row">
+                <div class="pr-star">★</div>
+                <div class="pr-info">
+                    <div class="ex">{{ pr.exercise }}</div>
+                    <div class="wt">New all-time record</div>
+                </div>
+                <div class="pr-badge">{{ pr.weight_kg }}kg</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-data">No new PRs this week — keep pushing!</div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Body weight -->
+{% if cur.body_weight or prev.body_weight %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="section-title">Body Weight</div>
+    <div style="display: flex; gap: 3rem;">
+        <div>
+            <div class="bw-label">This Week</div>
+            <div class="bw-val">{{ "%.1f"|format(cur.body_weight) if cur.body_weight else "—" }} <span style="font-size:1rem; color: var(--muted)">kg</span></div>
+        </div>
+        <div>
+            <div class="bw-label">Last Week</div>
+            <div class="bw-val" style="color: var(--muted)">{{ "%.1f"|format(prev.body_weight) if prev.body_weight else "—" }} <span style="font-size:1rem;">kg</span></div>
+        </div>
+        {% if cur.body_weight and prev.body_weight %}
+        <div>
+            <div class="bw-label">Change</div>
+            {% set bw_delta = cur.body_weight - prev.body_weight %}
+            <div class="bw-val" style="color: {% if bw_delta < 0 %}#4ade80{% elif bw_delta > 0 %}#f87171{% else %}var(--muted){% endif %}">
+                {{ "%+.1f"|format(bw_delta) }}kg
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Export button -->
+<div style="display: flex; gap: 1rem;">
+    <a href="{{ url_for('export_excel') }}" class="btn">⬇ Export to Excel</a>
+    <a href="{{ url_for('history') }}" class="btn btn-ghost">View Full History</a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Log Stats — GymTrack{% endblock %}
+{% block content %}
+
+<div class="page-title">LOG <span>STATS</span></div>
+
+<div class="card form-card">
+    <form method="POST" action="{{ url_for('log_stats') }}">
+        <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="date" value="{{ today }}" required>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Body Weight (kg)</label>
+                <input type="number" name="weight_kg" placeholder="80.5" step="0.1" min="0">
+            </div>
+            <div class="form-group">
+                <label>Body Fat %</label>
+                <input type="number" name="body_fat_pct" placeholder="18.0" step="0.1" min="0" max="60">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea name="notes" rows="2" placeholder="Morning weigh-in, feeling good..."></textarea>
+        </div>
+        <div class="actions">
+            <button class="btn" type="submit">Save Stats</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
